@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+pydantic-ai
+tavily
+bibtexparser
+python-dotenv
+feedparser
+requests
