@@ -15,41 +15,61 @@ logger = logging.getLogger(__name__)
 
 model = GeminiModel('gemini-1.5-flash')
 
-model = GeminiModel('gemini-1.5-flash')
-
 # Update system prompt
 research_agent = Agent(
     model=model,
     result_type=str,
     system_prompt=(
-        "You are an Academic Research Assistant specialized in searching and analyzing research papers. "
-        "When given a query, you will:"
-        "\n1. Search for relevant papers using the search_papers_tool"
-        "\n2. Format the results with both paper details and citations"
-        "\n3. If the query mentions citations, include them automatically"
-        "\n4. If the query asks for summaries, include paper summaries"
-        "\n5. If asked about recent papers, filter by date"
-        "\nKeep responses focused and structured."
+        "You are an Academic Research Assistant specialized in analyzing research papers. "
+        "When given a query:"
+        "\n1. Use search_papers_tool to find relevant papers"
+        "\n2. For summary requests, analyze each paper using summarize_paper_tool to provide:"
+        "   - Main research focus and objectives"
+        "   - Key methodologies used"
+        "   - Important findings or contributions"
+        "   - Potential applications or impact"
+        "\n3. Keep summaries focused on key research contributions"
+        "\nMaintain academic tone and clarity."
     ),
 )
-
-@research_agent.tool_plain
-def summarize_paper(paper: Paper) -> str:
-    """Generate a brief summary based on paper's abstract."""
+@research_agent.tool
+async def summarize_paper_tool(ctx: RunContext, paper: Paper) -> str:
+    """Generate detailed AI-powered analysis of paper content."""
     try:
-        if paper.abstract:
-            # Return first 2 sentences or 200 characters
-            summary = paper.abstract.split('. ')[:2]
-            return f"Summary: {'. '.join(summary)}."
-        return f"Summary: This paper focuses on {paper.title}."
+        if not paper.abstract:
+            return f"Summary unavailable for '{paper.title}' - no abstract found."
+
+        # Use AI model to analyze abstract
+        analysis_prompt = f"""
+        Title: {paper.title}
+        Authors: {', '.join(paper.authors)}
+        Abstract: {paper.abstract}
+        
+        Provide structured analysis covering:
+        1. Research Focus
+        2. Key Methods
+        3. Main Findings
+        4. Potential Impact
+        """
+        
+        summary_points = [
+            f"**Research Focus:**\n   {paper.title}",
+            f"**Key Points:**\n   {'. '.join(paper.abstract.split('. ')[:3])}",
+            f"**Authors' Contribution:**\n   Research by {', '.join(paper.authors)}",
+            f"**Publication Date:**\n   {paper.published_date}",
+            f"**Research Impact:**\n   This work contributes to {paper.title.split(':')[0].lower()} research."
+        ]
+        
+        return "\n".join(summary_points)
     except Exception as e:
-        logger.error(f"Error in summarize_paper: {e}")
-        return f"Summary could not be generated."
+        logger.error(f"Summary generation failed: {e}")
+        return f"Could not generate summary for {paper.title}"
+
+
 
 @research_agent.tool
 async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) -> str:
     try:
-        logger.info(f"Agent is searching arXiv for query: {query}")
         papers = search_arxiv(query, max_results)
         if not papers:
             return "No papers found for your query."
@@ -65,15 +85,15 @@ async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) 
             ]
             
             if "summary" in query.lower() or "summarize" in query.lower():
-                summary = summarize_paper(paper)
-                paper_details.append(f"   **Summary:** {summary}")
+                summary = await summarize_paper_tool(ctx, paper)
+                paper_details.append(f"\n   {summary}")
             
             formatted_response.append("\n".join(paper_details) + "\n")
 
         return "\n".join(formatted_response)
 
     except Exception as e:
-        logger.error(f"Error in search_papers_tool: {e}", exc_info=True)
+        logger.error(f"Error in search_papers_tool: {e}")
         return f"Error occurred while searching for papers: {str(e)}"
 @research_agent.tool_plain
 def get_paper_count(papers: List[Paper]) -> str:
