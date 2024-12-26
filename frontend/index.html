@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Research Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .paper-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .paper-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="dark"] {
+            background-color: #1a202c;
+            color: #a0aec0;
+        }
+        [data-theme="dark"] .bg-white {
+            background-color: #2d3748;
+        }
+        [data-theme="dark"] .text-gray-800 {
+            color: #cbd5e0; /* Lighter gray for better contrast */
+        }
+        [data-theme="dark"] .border-gray-300 {
+            border-color: #4a5568;
+        }
+        /* Ensure links and strong tags have appropriate colors in dark mode */
+        [data-theme="dark"] .markdown-content a {
+            color: #60a5fa; /* Tailwind's blue-400 */
+        }
+        [data-theme="dark"] .markdown-content strong {
+            color: #e2e8f0; /* Tailwind's gray-200 */
+        }
+        /* Ensure links and strong tags have appropriate colors in light mode */
+        .markdown-content a {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+        .markdown-content strong {
+            font-weight: 600;
+            color: #2d3748; /* Tailwind's gray-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen" id="body" data-theme="light">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-lg dark:bg-gray-800">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Academic Research Assistant</h1>
+            <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                <i class="fas fa-moon text-gray-800 dark:text-white"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Features Section -->
+    <section class="bg-blue-600 text-white py-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <h2 class="text-3xl font-bold mb-6">Research Made Easy</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="flex flex-col items-center p-4 bg-blue-700 rounded-lg shadow-md">
+                    <i class="fas fa-search text-4xl mb-4"></i>
+                    <h3 class="font-bold mb-2">Smart Search</h3>
+                    <p class="text-center">Find academic papers with AI-powered summaries and citations.</p>
+                </div>
+                <div class="flex flex-col items-center p-4 bg-blue-700 rounded-lg shadow-md">
+                    <i class="fas fa-quote-right text-4xl mb-4"></i>
+                    <h3 class="font-bold mb-2">Auto Citations</h3>
+                    <p class="text-center">Generate citations in multiple formats effortlessly.</p>
+                </div>
+                <div class="flex flex-col items-center p-4 bg-blue-700 rounded-lg shadow-md">
+                    <i class="fas fa-file-alt text-4xl mb-4"></i>
+                    <h3 class="font-bold mb-2">Detailed Summaries</h3>
+                    <p class="text-center">Get comprehensive insights with AI-generated summaries.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Search Section -->
+        <div class="search-section mb-8">
+            <form id="searchForm" class="space-y-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="Search for research papers..."
+                        class="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        required
+                    >
+                    <button 
+                        type="submit"
+                        class="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    >
+                        <i class="fas fa-search mr-2"></i>Search Papers
+                    </button>
+                </div>
+                <!-- Search Filters -->
+                <div class="flex flex-wrap gap-4">
+                    <select class="p-2 rounded border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" id="sortBy">
+                        <option value="relevance">Sort by Relevance</option>
+                        <option value="date">Sort by Date</option>
+                        <option value="citations">Sort by Citations</option>
+                    </select>
+                    <select class="p-2 rounded border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" id="paperType">
+                        <option value="all">All Papers</option>
+                        <option value="research">Research Papers</option>
+                        <option value="review">Review Papers</option>
+                    </select>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="includeSummary" checked>
+                        <span>Include Summaries</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="includeCitations" checked>
+                        <span>Include Citations</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="hidden">
+            <div class="flex justify-center items-center space-x-2">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                <span class="text-gray-600 dark:text-gray-300">Searching papers...</span>
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="space-y-6"></div>
+
+        <!-- Search History -->
+        <div id="searchHistory" class="mt-8 p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md hidden">
+            <h3 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">Recent Searches</h3>
+            <div id="historyList" class="space-y-2"></div>
+        </div>
+    </main>
+
+    <!-- JavaScript -->
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.getElementById('body');
+        const themeIcon = themeToggle.querySelector('i');
+
+        // Initialize theme based on system preference or localStorage
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        body.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+
+        function updateThemeIcon(theme) {
+            if (theme === 'dark') {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+        }
+
+        // Search History Management
+        let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+
+        function addToHistory(query) {
+            if (query && !searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                if (searchHistory.length > 5) searchHistory.pop();
+                localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+                updateHistoryDisplay();
+            }
+        }
+
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            if (searchHistory.length === 0) {
+                document.getElementById('searchHistory').classList.add('hidden');
+                return;
+            }
+            historyList.innerHTML = searchHistory
+                .map(query => `
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded">
+                        <span class="text-gray-600 dark:text-gray-300">${query}</span>
+                        <button class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-600" onclick="useHistoryQuery('${query}')">
+                            <i class="fas fa-arrow-circle-right"></i>
+                        </button>
+                    </div>
+                `)
+                .join('');
+            document.getElementById('searchHistory').classList.remove('hidden');
+        }
+
+        function useHistoryQuery(query) {
+            document.getElementById('searchInput').value = query;
+            document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+        }
+
+        // Initial load of search history
+        updateHistoryDisplay();
+
+        // Enhanced Search Handler
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = document.getElementById('searchInput').value.trim();
+            const includeSummary = document.getElementById('includeSummary').checked;
+            const includeCitations = document.getElementById('includeCitations').checked;
+            const sortBy = document.getElementById('sortBy').value;
+            const paperType = document.getElementById('paperType').value;
+
+            if (!query) return;
+
+            addToHistory(query);
+
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            loadingSpinner.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+
+            try {
+                // Construct the prompt based on filters
+                let prompt = `Find relevant ${paperType !== 'all' ? paperType + ' ' : ''}computer science papers on "${query}"`;
+                if (includeSummary) prompt += " with summaries";
+                if (includeCitations) prompt += " and citations";
+
+                // Add sorting preference to prompt
+                if (sortBy) {
+                    prompt += ` sorted by ${sortBy}`;
+                }
+
+                const response = await fetch('http://localhost:8000/agent/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                loadingSpinner.classList.add('hidden');
+                
+                if (!data || !data.response) {
+                    throw new Error('Invalid response format');
+                }
+
+                let formattedHtml = data.response;
+
+                // Handle markdown links [text](url)
+                formattedHtml = formattedHtml.replace(
+                    /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g,
+                    '<a href="$2" target="_blank" rel="noopener">$1</a>'
+                );
+
+                // Handle plain URLs
+                formattedHtml = formattedHtml.replace(
+                    /(https?:\/\/[^\s]+)/g,
+                    '<a href="$1" target="_blank" rel="noopener">$1</a>'
+                );
+
+                // Handle bold text
+                formattedHtml = formattedHtml.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                // Format section headers
+                formattedHtml = formattedHtml.replace(/^(Title|Authors|Published|URL|Summary|Citation):/gm, '<strong class="text-gray-700 dark:text-gray-400">$1:</strong>');
+
+                resultsContainer.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 paper-card space-y-2">
+                        <div class="markdown-content text-gray-800 dark:text-gray-300">
+                            ${formattedHtml.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                loadingSpinner.classList.add('hidden');
+                resultsContainer.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <div class="text-red-600 dark:text-red-400">
+                            Error: ${error.message}
+                            <p class="text-sm mt-2">Please try again with a different search query.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
