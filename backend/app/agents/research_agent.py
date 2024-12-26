@@ -24,7 +24,7 @@ research_agent = Agent(
         "When given a query:"
         "\n1. Use search_papers_tool to find relevant papers"
         "\n2. For citation requests, use format_citation_tool"
-        "\n3. For summary requests, use summarize_paper_tool"
+        "\n3. For summary requests, use summarize_paper_tool and don't ask for more context just generate on the basis of the what is available."
         "\n4. Always include paper URLs and full details"
         "\nMaintain academic formatting and clarity."
     ),
