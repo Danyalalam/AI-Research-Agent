@@ -23,18 +23,32 @@ research_agent = Agent(
         "You are an Academic Research Assistant specialized in analyzing research papers. "
         "When given a query:"
         "\n1. Use search_papers_tool to find relevant papers"
-        "\n2. For summary requests, analyze each paper using summarize_paper_tool to provide:"
-        "   - Main research focus and objectives"
-        "   - Key methodologies used"
-        "   - Important findings or contributions"
-        "   - Potential applications or impact"
-        "\n3. Keep summaries focused on key research contributions"
-        "\nMaintain academic tone and clarity."
+        "\n2. For citation requests, use format_citation_tool"
+        "\n3. For summary requests, use summarize_paper_tool"
+        "\n4. Always include paper URLs and full details"
+        "\nMaintain academic formatting and clarity."
     ),
 )
 @research_agent.tool
 async def summarize_paper_tool(ctx: RunContext, paper: Paper) -> str:
-    """Generate detailed AI-powered analysis of paper content."""
+    """
+    Generate AI-powered analysis of paper content from abstract.
+    
+    Input:
+        paper: Paper object containing title, authors, abstract
+    
+    Output:
+        Markdown formatted summary with sections:
+        - Research Focus
+        - Key Methods
+        - Main Findings
+        - Potential Impact
+    
+    Example output:
+        **Research Focus:** Quantum Computing
+        **Key Points:** Novel quantum algorithm...
+        **Impact:** Advances in quantum theory...
+    """
     try:
         if not paper.abstract:
             return f"Summary unavailable for '{paper.title}' - no abstract found."
@@ -78,35 +92,47 @@ async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) 
         
         for idx, paper in enumerate(papers, 1):
             paper_details = [
-                f"{idx}. **Title:** {paper.title}",
+                f"{idx}. **Title:** [{paper.title}]({paper.url})",
                 f"   **Authors:** {', '.join(paper.authors)}",
-                f"   **Published:** {paper.published_date}",
-                f"   **URL:** [{paper.url}]({paper.url})"
+                f"   **Published:** {paper.published_date}"
             ]
             
-            if "summary" in query.lower() or "summarize" in query.lower():
+            if "summary" in query.lower():
                 summary = await summarize_paper_tool(ctx, paper)
                 paper_details.append(f"\n   {summary}")
+                
+            if "citation" in query.lower() or "cite" in query.lower():
+                citation = await format_citation_tool(ctx, paper)
+                paper_details.append(f"\n   {citation}")
             
             formatted_response.append("\n".join(paper_details) + "\n")
 
         return "\n".join(formatted_response)
 
     except Exception as e:
-        logger.error(f"Error in search_papers_tool: {e}")
+        logger.error(f"Search error: {e}")
         return f"Error occurred while searching for papers: {str(e)}"
-@research_agent.tool_plain
-def get_paper_count(papers: List[Paper]) -> str:
-    """Get the count of papers found."""
-    return f"Found {len(papers)} papers matching your query."
 
-@research_agent.tool_plain
-def format_citation(paper: Paper) -> str:
-    """Format a paper citation in APA style."""
-    authors = ", ".join(paper.authors)
-    return f"{authors}. {paper.title}. arXiv preprint {paper.url}"
-
-def is_single_keyword(query: str) -> bool:
-    """Determines if the query is a single keyword."""
-    query = query.strip()
-    return bool(re.fullmatch(r'\b\w+\b', query))
+@research_agent.tool
+async def format_citation_tool(ctx: RunContext, paper: Paper) -> str:
+    """
+    Generates APA format citation for academic papers.
+    Input: Paper object with title, authors, URL, and date
+    Output: Formatted citation with clickable URL
+    Format: Authors (Year). Title. arXiv: URL
+    """
+    try:
+        # Format authors: Last, F. M., & Last, F. M.
+        authors = ', '.join(paper.authors)
+        year = paper.published_date[:4]
+        
+        citation_parts = [
+            "**Citation (APA Format):**",
+            f"{authors} ({year}). {paper.title}.",
+            f"arXiv: [{paper.url}]({paper.url})"
+        ]
+        
+        return "\n".join(citation_parts)
+    except Exception as e:
+        logger.error(f"Citation generation failed: {e}")
+        return f"Could not generate APA citation for: {paper.title}"
