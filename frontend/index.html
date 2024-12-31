@@ -65,7 +65,7 @@
             @apply font-semibold;
         }
 
-        /* Fade-in animation for results */
+        /* Fade-in animation for results and features */
         .fade-in {
             opacity: 0;
             transition: opacity 0.5s ease-in;
@@ -87,7 +87,7 @@
     </nav>
 
     <!-- Features Section -->
-    <section class="bg-blue-600 text-white py-8">
+    <section class="bg-blue-600 text-white py-8 fade-in">
         <div class="max-w-6xl mx-auto px-4">
             <h2 class="text-3xl font-bold mb-6">Research Made Easy</h2>
             <div class="grid md:grid-cols-3 gap-6">
@@ -394,7 +394,6 @@
                 paperFilters.classList.add('hidden');
                 searchForm.classList.add('hidden');
                 plagiarismForm.classList.remove('hidden');
-                // Update search button text if applicable
                 // Show Plagiarism Results, Hide others with fade-in
                 const plagiarismResultsContainer = document.getElementById('plagiarismResultsContainer');
                 if (plagiarismResultsContainer.innerHTML.trim() !== '') {
@@ -644,6 +643,17 @@
                     </div>
                 `;
                 displayWithFade(plagiarismResultsContainer, errorContent);
+            }
+        });
+
+        // Trigger fade-in animation for Features Section
+        document.addEventListener('DOMContentLoaded', () => {
+            const featuresSection = document.querySelector('section.bg-blue-600');
+            if (featuresSection) {
+                // Add a slight delay to ensure the animation runs after the initial load
+                setTimeout(() => {
+                    featuresSection.classList.add('show');
+                }, 100); // 100 milliseconds delay
             }
         });
     </script>
