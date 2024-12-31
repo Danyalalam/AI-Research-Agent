@@ -23,12 +23,13 @@ research_agent = Agent(
         "You are an Academic Research Assistant specialized in analyzing research papers. "
         "When given a query:"
         "\n1. Use search_papers_tool to find relevant papers"
-        "\n2. For citation requests, use format_citation_tool"
-        "\n3. For summary requests, use summarize_paper_tool and don't ask for more context just generate on the basis of the what is available."
+        "\n2. For citation requests, use format_citation_tool and don't ask for more context just generate on the basis of what is available"
+        "\n3. For summary requests, use summarize_paper_tool and don't ask for more context just generate on the basis of what is available."
         "\n4. Always include paper URLs and full details"
         "\nMaintain academic formatting and clarity."
     ),
 )
+
 @research_agent.tool
 async def summarize_paper_tool(ctx: RunContext, paper: Paper) -> str:
     """
@@ -79,10 +80,8 @@ async def summarize_paper_tool(ctx: RunContext, paper: Paper) -> str:
         logger.error(f"Summary generation failed: {e}")
         return f"Could not generate summary for {paper.title}"
 
-
-
 @research_agent.tool
-async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) -> str:
+async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5, citation_style: str = "APA", include_summary: bool = False) -> str:
     try:
         papers = search_arxiv(query, max_results)
         if not papers:
@@ -97,12 +96,12 @@ async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) 
                 f"   **Published:** {paper.published_date}"
             ]
             
-            if "summary" in query.lower():
+            if include_summary:
                 summary = await summarize_paper_tool(ctx, paper)
                 paper_details.append(f"\n   {summary}")
                 
-            if "citation" in query.lower() or "cite" in query.lower():
-                citation = await format_citation_tool(ctx, paper)
+            if include_summary or "citation" in query.lower() or "cite" in query.lower():
+                citation = await format_citation_tool(ctx, paper, citation_style)
                 paper_details.append(f"\n   {citation}")
             
             formatted_response.append("\n".join(paper_details) + "\n")
@@ -114,25 +113,35 @@ async def search_papers_tool(ctx: RunContext, query: str, max_results: int = 5) 
         return f"Error occurred while searching for papers: {str(e)}"
 
 @research_agent.tool
-async def format_citation_tool(ctx: RunContext, paper: Paper) -> str:
+async def format_citation_tool(ctx: RunContext, paper: Paper, style: str = "APA") -> str:
     """
-    Generates APA format citation for academic papers.
-    Input: Paper object with title, authors, URL, and date
-    Output: Formatted citation with clickable URL
-    Format: Authors (Year). Title. arXiv: URL
+    Generates formatted citations for academic papers in multiple styles.
+    
+    Input:
+        paper: Paper object with title, authors, URL, and date
+        style: Citation style (e.g., APA, MLA, Chicago)
+    
+    Output:
+        Formatted citation with clickable URL
     """
     try:
-        # Format authors: Last, F. M., & Last, F. M.
-        authors = ', '.join(paper.authors)
-        year = paper.published_date[:4]
+        # Define citation formats
+        citation_formats = {
+            "APA": lambda p: f"{', '.join(p.authors)} ({p.published_date[:4]}). {p.title}. arXiv: [{p.url}]({p.url})",
+            "MLA": lambda p: f"{', '.join(p.authors)}. \"{p.title}.\" arXiv, {p.published_date[:4]}, {p.url}.",
+            "Chicago": lambda p: f"{', '.join(p.authors)}. {p.published_date[:4]}. \"{p.title}.\" arXiv. {p.url}.",
+        }
+
+        # Get the formatter based on requested style
+        formatter = citation_formats.get(style.upper())
+
+        if not formatter:
+            return f"Unsupported citation style: {style}. Supported styles are APA, MLA, Chicago."
+
+        citation = formatter(paper)
         
-        citation_parts = [
-            "**Citation (APA Format):**",
-            f"{authors} ({year}). {paper.title}.",
-            f"arXiv: [{paper.url}]({paper.url})"
-        ]
-        
-        return "\n".join(citation_parts)
+        return f"**Citation ({style.upper()} Format):**\n{citation}"
+    
     except Exception as e:
         logger.error(f"Citation generation failed: {e}")
-        return f"Could not generate APA citation for: {paper.title}"
+        return f"Could not generate {style.upper()} citation for: {paper.title}"

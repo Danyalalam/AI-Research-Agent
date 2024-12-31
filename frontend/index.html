@@ -9,10 +9,10 @@
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .paper-card, .web-card {
+        .paper-card, .web-card, .plagiarism-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .paper-card:hover, .web-card:hover {
+        .paper-card:hover, .web-card:hover, .plagiarism-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
         }
@@ -64,6 +64,15 @@
         .markdown-content strong {
             @apply font-semibold;
         }
+
+        /* Fade-in animation for results */
+        .fade-in {
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+        .fade-in.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen" id="body" data-theme="light">
@@ -114,14 +123,18 @@
                 <button type="button" id="paperSearchBtn" class="px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-600 rounded-l-lg hover:bg-blue-50 focus:z-10 focus:ring-2 focus:ring-blue-500 active:bg-blue-100">
                     <i class="fas fa-file-alt mr-2"></i>Paper Search
                 </button>
-                <button type="button" id="webSearchBtn" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-r-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-500">
+                <button type="button" id="webSearchBtn" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-500">
                     <i class="fas fa-globe mr-2"></i>Web Search
+                </button>
+                <button type="button" id="plagiarismCheckBtn" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-r-lg hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-copy mr-2"></i>Plagiarism Check
                 </button>
             </div>
         </div>
 
         <!-- Search Section -->
         <div class="search-section mb-8">
+            <!-- Paper & Web Search Form -->
             <form id="searchForm" class="space-y-4">
                 <div class="flex flex-col md:flex-row gap-4">
                     <input 
@@ -158,6 +171,36 @@
                         <input type="checkbox" id="includeCitations" checked>
                         <span>Include Citations</span>
                     </label>
+                    
+                    <!-- Citation Style Selector -->
+                    <select class="p-2 rounded border border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white" id="citationStyle">
+                        <option value="APA" selected>APA</option>
+                        <option value="MLA">MLA</option>
+                        <option value="Chicago">Chicago</option>
+                        <!-- Add more citation styles as needed -->
+                    </select>
+                </div>
+            </form>
+
+            <!-- Plagiarism Check Form -->
+            <form id="plagiarismForm" class="space-y-4 hidden">
+                <div>
+                    <label for="plagiarismInput" class="block text-gray-700 dark:text-gray-300 mb-2">Enter text to check for plagiarism:</label>
+                    <textarea 
+                        id="plagiarismInput" 
+                        rows="6" 
+                        placeholder="Paste your text here..."
+                        class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        required
+                    ></textarea>
+                </div>
+                <div>
+                    <button 
+                        type="submit"
+                        class="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                    >
+                        <i class="fas fa-check mr-2"></i>Check Plagiarism
+                    </button>
                 </div>
             </form>
         </div>
@@ -166,15 +209,17 @@
         <div id="loadingSpinner" class="hidden">
             <div class="flex justify-center items-center space-x-2">
                 <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-                <span class="text-gray-600 dark:text-gray-300">Searching...</span>
+                <span class="text-gray-600 dark:text-gray-300">Processing...</span>
             </div>
         </div>
 
         <!-- Results Containers -->
         <!-- Paper Search Results -->
-        <div id="paperResultsContainer" class="space-y-6 hidden"></div>
+        <div id="paperResultsContainer" class="space-y-6 hidden fade-in"></div>
         <!-- Web Search Results -->
-        <div id="webResultsContainer" class="space-y-6 hidden"></div>
+        <div id="webResultsContainer" class="space-y-6 hidden fade-in"></div>
+        <!-- Plagiarism Check Results -->
+        <div id="plagiarismResultsContainer" class="space-y-6 hidden fade-in"></div>
 
         <!-- Search History -->
         <div id="searchHistory" class="mt-8 p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md hidden">
@@ -235,7 +280,7 @@
                 .map(query => `
                     <div class="flex justify-between items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded">
                         <span class="text-gray-600 dark:text-gray-300">${query}</span>
-                        <button class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-600" onclick="useHistoryQuery('${query}')">
+                        <button class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-600" onclick="useHistoryQuery('${encodeURIComponent(query)}')">
                             <i class="fas fa-arrow-circle-right"></i>
                         </button>
                     </div>
@@ -245,38 +290,65 @@
         }
 
         function useHistoryQuery(query) {
-            document.getElementById('searchInput').value = query;
-            document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+            const decodedQuery = decodeURIComponent(query);
+            if (currentSearchMode === 'plagiarism') {
+                document.getElementById('plagiarismInput').value = decodedQuery;
+                document.getElementById('plagiarismForm').dispatchEvent(new Event('submit'));
+            } else {
+                document.getElementById('searchInput').value = decodedQuery;
+                document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+            }
         }
 
         // Initial load of search history
         updateHistoryDisplay();
 
         // Search Mode Toggle
-        let currentSearchMode = 'paper'; // 'paper' or 'web'
+        let currentSearchMode = 'paper'; // 'paper', 'web', or 'plagiarism'
 
         const paperSearchBtn = document.getElementById('paperSearchBtn');
         const webSearchBtn = document.getElementById('webSearchBtn');
+        const plagiarismCheckBtn = document.getElementById('plagiarismCheckBtn');
         const searchInput = document.getElementById('searchInput');
         const paperFilters = document.getElementById('paperFilters');
         const searchFormSubmitBtn = document.querySelector('#searchForm button[type="submit"]');
+        const searchForm = document.getElementById('searchForm');
+        const plagiarismForm = document.getElementById('plagiarismForm');
+        const plagiarismInput = document.getElementById('plagiarismInput');
+
+        // Function to display content with fade-in effect
+        function displayWithFade(container, content) {
+            container.innerHTML = content;
+            container.classList.remove('hidden');
+            container.classList.remove('show');
+            void container.offsetWidth; // Trigger reflow
+            container.classList.add('show');
+        }
 
         paperSearchBtn.addEventListener('click', () => {
             if (currentSearchMode !== 'paper') {
                 currentSearchMode = 'paper';
                 // Clear search input
                 searchInput.value = '';
+                plagiarismInput.value = '';
+                // Update button styles
                 paperSearchBtn.classList.replace('text-gray-900', 'text-blue-600');
                 webSearchBtn.classList.replace('text-blue-600', 'text-gray-900');
+                plagiarismCheckBtn.classList.replace('text-blue-600', 'text-gray-900');
+                // Update placeholders and visibility
                 searchInput.placeholder = 'Search for research papers...';
-                // Show paper filters
                 paperFilters.classList.remove('hidden');
+                searchForm.classList.remove('hidden');
+                plagiarismForm.classList.add('hidden');
                 // Update search button text
                 searchFormSubmitBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Search Papers';
-                // Show Paper Results, Hide Web Results
-                document.getElementById('paperResultsContainer').classList.remove('hidden');
+                // Show Paper Results, Hide others with fade-in
+                const paperResultsContainer = document.getElementById('paperResultsContainer');
+                if (paperResultsContainer.innerHTML.trim() !== '') {
+                    displayWithFade(paperResultsContainer, paperResultsContainer.innerHTML);
+                }
                 document.getElementById('webResultsContainer').classList.add('hidden');
-                // Do not clear Web Results
+                document.getElementById('plagiarismResultsContainer').classList.add('hidden');
             }
         });
 
@@ -285,32 +357,66 @@
                 currentSearchMode = 'web';
                 // Clear search input
                 searchInput.value = '';
+                plagiarismInput.value = '';
+                // Update button styles
                 webSearchBtn.classList.replace('text-gray-900', 'text-blue-600');
                 paperSearchBtn.classList.replace('text-blue-600', 'text-gray-900');
+                plagiarismCheckBtn.classList.replace('text-blue-600', 'text-gray-900');
+                // Update placeholders and visibility
                 searchInput.placeholder = 'Search for latest research news...';
-                // Hide paper filters
                 paperFilters.classList.add('hidden');
+                searchForm.classList.remove('hidden');
+                plagiarismForm.classList.add('hidden');
                 // Update search button text
                 searchFormSubmitBtn.innerHTML = '<i class="fas fa-search mr-2"></i>Search Web';
-                // Show Web Results, Hide Paper Results
-                document.getElementById('webResultsContainer').classList.remove('hidden');
+                // Show Web Results, Hide others with fade-in
+                const webResultsContainer = document.getElementById('webResultsContainer');
+                if (webResultsContainer.innerHTML.trim() !== '') {
+                    displayWithFade(webResultsContainer, webResultsContainer.innerHTML);
+                }
                 document.getElementById('paperResultsContainer').classList.add('hidden');
-                // Do not clear Paper Results
+                document.getElementById('plagiarismResultsContainer').classList.add('hidden');
+            }
+        });
+
+        plagiarismCheckBtn.addEventListener('click', () => {
+            if (currentSearchMode !== 'plagiarism') {
+                currentSearchMode = 'plagiarism';
+                // Clear inputs
+                searchInput.value = '';
+                plagiarismInput.value = '';
+                // Update button styles
+                plagiarismCheckBtn.classList.replace('text-gray-900', 'text-blue-600');
+                paperSearchBtn.classList.replace('text-blue-600', 'text-gray-900');
+                webSearchBtn.classList.replace('text-blue-600', 'text-gray-900');
+                // Update placeholders and visibility
+                searchInput.placeholder = 'Search for research news...';
+                paperFilters.classList.add('hidden');
+                searchForm.classList.add('hidden');
+                plagiarismForm.classList.remove('hidden');
+                // Update search button text if applicable
+                // Show Plagiarism Results, Hide others with fade-in
+                const plagiarismResultsContainer = document.getElementById('plagiarismResultsContainer');
+                if (plagiarismResultsContainer.innerHTML.trim() !== '') {
+                    displayWithFade(plagiarismResultsContainer, plagiarismResultsContainer.innerHTML);
+                }
+                document.getElementById('paperResultsContainer').classList.add('hidden');
+                document.getElementById('webResultsContainer').classList.add('hidden');
             }
         });
 
         // Initially, show paper filters and paper results
-        document.getElementById('paperFilters').classList.remove('hidden');
-        document.getElementById('paperResultsContainer').classList.remove('hidden');
+        paperSearchBtn.click();
 
-        // Enhanced Search Handler
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+        // Enhanced Search Handler for Paper and Web Search
+        searchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const query = searchInput.value.trim();
             const includeSummary = document.getElementById('includeSummary').checked;
             const includeCitations = document.getElementById('includeCitations').checked;
             const sortBy = document.getElementById('sortBy').value;
             const paperType = document.getElementById('paperType').value;
+            const citationStyle = document.getElementById('citationStyle').value; // Capture citation style
 
             if (!query) return;
 
@@ -319,6 +425,7 @@
             const loadingSpinner = document.getElementById('loadingSpinner');
             const paperResultsContainer = document.getElementById('paperResultsContainer');
             const webResultsContainer = document.getElementById('webResultsContainer');
+            const plagiarismResultsContainer = document.getElementById('plagiarismResultsContainer');
 
             loadingSpinner.classList.remove('hidden');
 
@@ -329,19 +436,23 @@
 
                 if (currentSearchMode === 'paper') {
                     // Construct the prompt for paper search
-                    let prompt = `Find relevant ${paperType !== 'all' ? paperType + ' ' : ''}computer science papers on "${query}"`;
+                    let prompt = `Find relevant ${paperType !== 'all' ? paperType + ' ' : ''}papers on "${query}"`;
                     if (includeSummary) prompt += " with summaries";
-                    if (includeCitations) prompt += " and citations";
-
+                    if (includeCitations) prompt += ` and citations in ${citationStyle} style`;
                     if (sortBy) {
                         prompt += ` sorted by ${sortBy}`;
                     }
 
-                    payload = { prompt };
+                    payload = { 
+                        prompt,
+                        citation_style: includeCitations ? citationStyle : "APA" // Include citation style if citations are requested
+                    };
                 } else {
                     // For web search, the query is sent directly
                     payload = { prompt: query };
                 }
+
+                console.log("Sending payload for search:", payload); // Debugging
 
                 const response = await fetch(`http://localhost:8000${endpoint}`, {
                     method: 'POST',
@@ -397,27 +508,33 @@
                 formattedHtml = formattedHtml.replace(/\n\n/g, '<br><br>');
 
                 if (currentSearchMode === 'paper') {
-                    paperResultsContainer.innerHTML = `
+                    const paperContent = `
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 paper-card space-y-4">
                             <div class="markdown-content text-gray-800 dark:text-gray-300 prose dark:prose-invert max-w-none">
                                 ${formattedHtml}
                             </div>
                         </div>
                     `;
+                    displayWithFade(paperResultsContainer, paperContent);
+                    webResultsContainer.classList.add('hidden');
+                    plagiarismResultsContainer.classList.add('hidden');
                 } else {
-                    webResultsContainer.innerHTML = `
+                    const webContent = `
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 web-card space-y-4">
                             <div class="markdown-content text-gray-800 dark:text-gray-300 prose dark:prose-invert max-w-none">
                                 ${formattedHtml}
                             </div>
                         </div>
                     `;
+                    displayWithFade(webResultsContainer, webContent);
+                    paperResultsContainer.classList.add('hidden');
+                    plagiarismResultsContainer.classList.add('hidden');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 loadingSpinner.classList.add('hidden');
                 if (currentSearchMode === 'paper') {
-                    document.getElementById('paperResultsContainer').innerHTML = `
+                    const errorContent = `
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                             <div class="text-red-600 dark:text-red-400">
                                 Error: ${error.message}
@@ -425,8 +542,9 @@
                             </div>
                         </div>
                     `;
+                    displayWithFade(paperResultsContainer, errorContent);
                 } else {
-                    document.getElementById('webResultsContainer').innerHTML = `
+                    const errorContent = `
                         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                             <div class="text-red-600 dark:text-red-400">
                                 Error: ${error.message}
@@ -434,7 +552,98 @@
                             </div>
                         </div>
                     `;
+                    displayWithFade(webResultsContainer, errorContent);
                 }
+            }
+        });
+
+
+        // Plagiarism Check Handler
+        plagiarismForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = plagiarismInput.value.trim();
+
+            if (!text) return;
+
+            console.log("Plagiarism Check Input:", text); // Debugging
+
+            addToHistory(text);
+
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const plagiarismResultsContainer = document.getElementById('plagiarismResultsContainer');
+
+            loadingSpinner.classList.remove('hidden');
+
+            try {
+                const payload = { 
+                    text: text
+                };
+
+                console.log("Sending payload:", payload); // Debugging
+
+                const response = await fetch('http://localhost:8000/agent/plagiarism-check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Server error: ${errorData.detail || response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('Plagiarism API Response:', data); // Debugging
+
+                loadingSpinner.classList.add('hidden');
+
+                if (data.success) {
+                    const aiProb = (data.ai_probability * 100).toFixed(2);
+                    const humanProb = (data.human_probability * 100).toFixed(2);
+                    const scanId = data.scan_id;
+                    const totalWords = data.total_words;
+
+                    const plagContent = `
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 plagiarism-card space-y-4">
+                            <div class="markdown-content text-gray-800 dark:text-gray-300 prose dark:prose-invert max-w-none">
+                                <h2>Plagiarism Check Results</h2>
+                                <p><strong>AI Probability:</strong> ${aiProb}%</p>
+                                <p><strong>Human Probability:</strong> ${humanProb}%</p>
+                                <p><strong>Scan ID:</strong> ${scanId}</p>
+                                <p><strong>Total Words Analyzed:</strong> ${totalWords}</p>
+                            </div>
+                        </div>
+                    `;
+                    displayWithFade(plagiarismResultsContainer, plagContent);
+                } else {
+                    const errorContent = `
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                            <div class="text-red-600 dark:text-red-400">
+                                Error: ${data.error}
+                                <p class="text-sm mt-2">Please try again with different text.</p>
+                            </div>
+                        </div>
+                    `;
+                    displayWithFade(plagiarismResultsContainer, errorContent);
+                }
+                
+                // Hide other results
+                document.getElementById('paperResultsContainer').classList.add('hidden');
+                document.getElementById('webResultsContainer').classList.add('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                loadingSpinner.classList.add('hidden');
+                const errorContent = `
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <div class="text-red-600 dark:text-red-400">
+                            Error: ${error.message}
+                            <p class="text-sm mt-2">Please try again with different text.</p>
+                        </div>
+                    </div>
+                `;
+                displayWithFade(plagiarismResultsContainer, errorContent);
             }
         });
     </script>
