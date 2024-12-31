@@ -453,7 +453,7 @@
 
                 console.log("Sending payload for search:", payload); // Debugging
 
-                const response = await fetch(`http://localhost:8000${endpoint}`, {
+                const response = await fetch(`${endpoint}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -580,7 +580,7 @@
 
                 console.log("Sending payload:", payload); // Debugging
 
-                const response = await fetch('http://localhost:8000/agent/plagiarism-check', {
+                const response = await fetch('/agent/plagiarism-check', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
